@@ -54,6 +54,6 @@ Then you will see this response:
 
 Now, this is just a metadata demo, in the future, i want add more and more feature into Cobra.
 
-Add feature here...
+Add new feature here...
 
 [1]: https://github.com/square/retrofit
