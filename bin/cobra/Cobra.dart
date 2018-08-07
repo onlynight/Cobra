@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:mirrors';
 import 'Annotations.dart';
 import 'package:http/http.dart' as http;
@@ -89,8 +88,12 @@ class Cobra {
     return _read_post(request);
   }
 
+  void _head(Request request){
+    http.head(request.toGeturl());
+  }
+
   static dynamic _read(Request request) {
-    return http.read(request.toGeturl());
+    return http.get(request.toGeturl());
   }
 
   static dynamic _read_post(Request request) {
@@ -107,7 +110,7 @@ class GetRequstBuilder extends RequestBuilder {
     if (methodMirror != null) {
       for (var metadata in methodMirror.metadata) {
         if (metadata.reflectee is GET) {
-          url += metadata.reflectee.value;
+          url += metadata.reflectee.path;
           break;
         }
       }
@@ -119,11 +122,12 @@ class GetRequstBuilder extends RequestBuilder {
             request.params.putIfAbsent(
                 methodMirror.parameters[i].metadata[0].reflectee.value,
                 () => this.data[i]);
-          } else {
-            request.params.putIfAbsent(
-                MirrorSystem.getName(methodMirror.parameters[i].simpleName),
-                () => this.data[i]);
-          }
+          } 
+          // else {
+          //   request.params.putIfAbsent(
+          //       MirrorSystem.getName(methodMirror.parameters[i].simpleName),
+          //       () => this.data[i]);
+          // }
         }
       }
       return request;
@@ -141,23 +145,24 @@ class PostRequstBuilder extends RequestBuilder {
     if (methodMirror != null) {
       for (var metadata in methodMirror.metadata) {
         if (metadata.reflectee is POST) {
-          url += metadata.reflectee.value;
+          url += metadata.reflectee.path;
           break;
         }
       }
 
       var request = new Request(url);
       for (int i = 0; i < methodMirror.parameters.length; i++) {
-        if (methodMirror.parameters[i].metadata[0].reflectee is Form) {
-          if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
+        if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
+          if (methodMirror.parameters[i].metadata[0].reflectee.path != null) {
             request.params.putIfAbsent(
-                methodMirror.parameters[i].metadata[0].reflectee.value,
+                methodMirror.parameters[i].metadata[0].reflectee.path,
                 () => this.data[i]);
-          } else {
-            request.params.putIfAbsent(
-                MirrorSystem.getName(methodMirror.parameters[i].simpleName),
-                () => this.data[i]);
-          }
+          } 
+          // else {
+          //   request.params.putIfAbsent(
+          //       MirrorSystem.getName(methodMirror.parameters[i].simpleName),
+          //       () => this.data[i]);
+          // }
         }
       }
       return request;
@@ -191,5 +196,9 @@ class Request {
       getUrl += key + '=' + value.toString() + '&';
     });
     return getUrl;
+  }
+
+  String toUrl(){
+    return url;
   }
 }
