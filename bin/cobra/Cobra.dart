@@ -4,16 +4,14 @@ import 'package:http/http.dart' as http;
 export 'Annotations.dart';
 
 class Cobra {
-  static final Map<Type, Map<Symbol, MethodMirror>> _cache = {};
-  static final Cobra _instance = const Cobra();
+  String _url;
+  Map<Type, Map<Symbol, MethodMirror>> _cache = {};
 
-  static dynamic obtainService(Type type) {
-    return _instance._obtainService(type);
-  }
+  void set baseUrl(String url) => _url = url;
 
-  const Cobra();
+  String get baseUrl => _url;
 
-  dynamic _obtainService(Type type) {
+  dynamic obtainService(Type type) {
     var exist = _cache.containsKey(type);
     if (!exist) {
       ClassMirror classMirror = reflectClass(type);
@@ -94,7 +92,7 @@ class Cobra {
   }
 
   dynamic _get(MethodMirror method, List<dynamic> data) {
-    var request = new GetRequstBuilder(method, data).buildRequest();
+    var request = new GetRequstBuilder(baseUrl, method, data).buildRequest();
     print('GET     =>    <' +
         MirrorSystem.getName(method.qualifiedName) +
         '>    REQUEST    =>    ' +
@@ -103,7 +101,7 @@ class Cobra {
   }
 
   dynamic _post(MethodMirror method, List<dynamic> data) {
-    var request = new PostRequstBuilder(method, data).buildRequest();
+    var request = new PostRequstBuilder(baseUrl, method, data).buildRequest();
     print('POST    =>    <' +
         MirrorSystem.getName(method.qualifiedName) +
         '>    REQUEST    =>    ' +
@@ -112,7 +110,7 @@ class Cobra {
   }
 
   dynamic _head(MethodMirror method, List<dynamic> data) {
-    var request = new HeadRequestBuilder(method, data).buildRequest();
+    var request = new HeadRequestBuilder(baseUrl, method, data).buildRequest();
     print('HEAD    =>    <' +
         MirrorSystem.getName(method.qualifiedName) +
         '>    REQUEST    =>    ' +
@@ -122,7 +120,7 @@ class Cobra {
   }
 
   dynamic _put(MethodMirror method, List<dynamic> data) {
-    var request = new PutRequestBuilder(method, data).buildRequest();
+    var request = new PutRequestBuilder(baseUrl, method, data).buildRequest();
     print('PUT    =>    <' +
         MirrorSystem.getName(method.qualifiedName) +
         '>    REQUEST    =>    ' +
@@ -132,18 +130,9 @@ class Cobra {
   }
 
   dynamic _delete(MethodMirror method, List<dynamic> data) {
-    var request = new DeleteRequestBuilder(method, data).buildRequest();
+    var request =
+        new DeleteRequestBuilder(baseUrl, method, data).buildRequest();
     print('DELETE    =>    <' +
-        MirrorSystem.getName(method.qualifiedName) +
-        '>    REQUEST    =>    ' +
-        request.toGetUrl());
-
-    return _http_delete(request);
-  }
-
-  dynamic _options(MethodMirror method, List<dynamic> data) {
-    var request = new DeleteRequestBuilder(method, data).buildRequest();
-    print('OPTIONS    =>    <' +
         MirrorSystem.getName(method.qualifiedName) +
         '>    REQUEST    =>    ' +
         request.toGetUrl());
@@ -193,8 +182,8 @@ class Cobra {
 }
 
 class GetRequstBuilder extends RequestBuilder {
-  GetRequstBuilder(MethodMirror methodMirror, List data)
-      : super(methodMirror, data);
+  GetRequstBuilder(String baseUrl, MethodMirror methodMirror, List data)
+      : super(baseUrl, methodMirror, data);
 
   Request buildRequest() {
     String url = '';
@@ -206,7 +195,7 @@ class GetRequstBuilder extends RequestBuilder {
         }
       }
 
-      var request = new Request(url);
+      var request = new Request(url, baseUrl);
       for (int i = 0; i < methodMirror.parameters.length; i++) {
         if (methodMirror.parameters[i].metadata[0].reflectee is Query) {
           if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
@@ -228,8 +217,8 @@ class GetRequstBuilder extends RequestBuilder {
 }
 
 class PostRequstBuilder extends RequestBuilder {
-  PostRequstBuilder(MethodMirror methodMirror, List data)
-      : super(methodMirror, data);
+  PostRequstBuilder(String baseUrl, MethodMirror methodMirror, List data)
+      : super(baseUrl, methodMirror, data);
 
   Request buildRequest() {
     String url = '';
@@ -241,7 +230,7 @@ class PostRequstBuilder extends RequestBuilder {
         }
       }
 
-      var request = new Request(url);
+      var request = new Request(url, baseUrl);
       for (int i = 0; i < methodMirror.parameters.length; i++) {
         if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
           if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
@@ -263,8 +252,8 @@ class PostRequstBuilder extends RequestBuilder {
 }
 
 class HeadRequestBuilder extends RequestBuilder {
-  HeadRequestBuilder(MethodMirror methodMirror, List data)
-      : super(methodMirror, data);
+  HeadRequestBuilder(String baseUrl, MethodMirror methodMirror, List data)
+      : super(baseUrl, methodMirror, data);
 
   Request buildRequest() {
     String url = '';
@@ -276,15 +265,15 @@ class HeadRequestBuilder extends RequestBuilder {
         }
       }
 
-      return new Request(url);
+      return new Request(url, baseUrl);
     }
     return null;
   }
 }
 
 class PutRequestBuilder extends RequestBuilder {
-  PutRequestBuilder(MethodMirror methodMirror, List data)
-      : super(methodMirror, data);
+  PutRequestBuilder(String baseUrl, MethodMirror methodMirror, List data)
+      : super(baseUrl, methodMirror, data);
 
   Request buildRequest() {
     String url = '';
@@ -296,7 +285,7 @@ class PutRequestBuilder extends RequestBuilder {
         }
       }
 
-      var request = new Request(url);
+      var request = new Request(url, baseUrl);
       for (int i = 0; i < methodMirror.parameters.length; i++) {
         if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
           if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
@@ -313,8 +302,8 @@ class PutRequestBuilder extends RequestBuilder {
 }
 
 class DeleteRequestBuilder extends RequestBuilder {
-  DeleteRequestBuilder(MethodMirror methodMirror, List data)
-      : super(methodMirror, data);
+  DeleteRequestBuilder(String baseUrl, MethodMirror methodMirror, List data)
+      : super(baseUrl, methodMirror, data);
 
   Request buildRequest() {
     String url = '';
@@ -326,17 +315,18 @@ class DeleteRequestBuilder extends RequestBuilder {
         }
       }
 
-      return new Request(url);
+      return new Request(url, baseUrl);
     }
     return null;
   }
 }
 
 class RequestBuilder {
+  String baseUrl;
   MethodMirror methodMirror;
   List<dynamic> data;
 
-  RequestBuilder(this.methodMirror, this.data);
+  RequestBuilder(this.baseUrl, this.methodMirror, this.data);
 
   Request buildRequest() {
     return null;
@@ -345,10 +335,17 @@ class RequestBuilder {
 
 class Request {
   String url;
+  String baseUrl;
   Map<String, String> params = {};
   Map<String, String> headers = {};
 
-  Request(this.url, {this.headers});
+  Request(this.url, this.baseUrl, {this.headers}) {
+    if (url != null) {
+      if (!url.startsWith('http')) {
+        url = baseUrl + url;
+      }
+    }
+  }
 
   String toGetUrl() {
     String getUrl = url;

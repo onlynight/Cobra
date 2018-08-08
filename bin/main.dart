@@ -32,12 +32,13 @@ abstract class TestService {
   @PUT(constants.LOCAL_HOST)
   Future<Response> putLocalhost(@Field('id') int id);
 
-  @DELETE(constants.LOCAL_HOST)
+  @DELETE('/delete.json')
   Future<Response> deleteLocalhost();
 }
 
 main(List<String> args) {
-  TestService service = Cobra.obtainService(TestService);
+  var cobra = new Cobra()..baseUrl = constants.LOCAL_HOST;
+  TestService service = cobra.obtainService(TestService);
   Future<Response> response = service.getSiteInfo();
   printResponse(response);
   response = service.getSiteStatus();
