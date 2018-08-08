@@ -19,6 +19,21 @@ abstract class TestService {
 
   @GET(constants.API_TOPIC_DETAILS)
   Future<Response> getTopicDetails(@Query('id') int id);
+
+  @GET(constants.LOCAL_HOST)
+  Future<Response> requestLocalhost();
+
+  @POST(constants.LOCAL_HOST)
+  Future<Response> postLocalhost(@Field('id') int id);
+
+  @HEAD(constants.LOCAL_HOST)
+  Future<Response> headLocalhost();
+
+  @PUT(constants.LOCAL_HOST)
+  Future<Response> putLocalhost(@Field('id') int id);
+
+  @DELETE(constants.LOCAL_HOST)
+  Future<Response> deleteLocalhost();
 }
 
 main(List<String> args) {
@@ -32,13 +47,29 @@ main(List<String> args) {
   response = service.getHotTopic();
   // printResponse(response);
   response = service.getTopicDetails(476624);
+  // printResponse(response);
+  response = service.requestLocalhost();
+  printResponse(response);
+  response = service.postLocalhost(1);
+  printResponse(response);
+  response = service.headLocalhost();
+  printResponse(response);
+  response = service.putLocalhost(1);
+  printResponse(response);
+  response = service.deleteLocalhost();
   printResponse(response);
 }
 
 void printResponse(var response) {
   if (response != null) {
     response.then((Response res) {
-      print(res.statusCode.toString() + ' ==> ' + res.body.toString());
+      print(res.request.method +
+          ' ==> ' +
+          res.statusCode.toString() +
+          ' ==> ' +
+          res.request.url.toString() +
+          ' ==> ' +
+          res.body.toString());
     });
   }
 }

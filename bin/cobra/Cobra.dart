@@ -31,27 +31,50 @@ class Cobra {
   noSuchMethod(Invocation invocation) {
     var method = _getMethod(invocation);
     if (method != null) {
-      var hasGet = false;
-      var hasPost = false;
+      var methodName = null;
+      int methodCount = 0;
       method.metadata.forEach((metadata) {
         if (metadata.reflectee is GET) {
-          hasGet = true;
-        }
-
-        if (metadata.reflectee is POST) {
-          hasPost = true;
+          methodName = 'GET';
+          methodCount++;
+        } else if (metadata.reflectee is POST) {
+          methodName = 'POST';
+          methodCount++;
+        } else if (metadata.reflectee is HEAD) {
+          methodName = 'HEAD';
+          methodCount++;
+        } else if (metadata.reflectee is PUT) {
+          methodName = 'PUT';
+          methodCount++;
+        } else if (metadata.reflectee is DELETE) {
+          methodName = 'DELETE';
+          methodCount++;
         }
       });
 
-      if (hasGet && hasPost) {
+      if (methodCount > 1) {
         throw new Exception(MirrorSystem.getName(method.qualifiedName) +
-            ' ===> has both [GET] and [POST] metadata.');
+            ' ===> has multi metadata.');
       }
 
-      if (hasGet) {
-        return _get(method, invocation.positionalArguments);
-      } else if (hasPost) {
-        _post(method, invocation.positionalArguments);
+      switch (methodName) {
+        case 'GET':
+          return _get(method, invocation.positionalArguments);
+          break;
+        case 'POST':
+          return _post(method, invocation.positionalArguments);
+          break;
+        case 'HEAD':
+          return _head(method, invocation.positionalArguments);
+          break;
+        case 'PUT':
+          return _put(method, invocation.positionalArguments);
+          break;
+        case 'DELETE':
+          return _delete(method, invocation.positionalArguments);
+          break;
+        default:
+          break;
       }
     }
   }
@@ -75,8 +98,8 @@ class Cobra {
     print('GET     =>    <' +
         MirrorSystem.getName(method.qualifiedName) +
         '>    REQUEST    =>    ' +
-        request.toGeturl());
-    return _read(request);
+        request.toGetUrl());
+    return _http_get(request);
   }
 
   dynamic _post(MethodMirror method, List<dynamic> data) {
@@ -84,20 +107,88 @@ class Cobra {
     print('POST    =>    <' +
         MirrorSystem.getName(method.qualifiedName) +
         '>    REQUEST    =>    ' +
-        request.toGeturl());
-    return _read_post(request);
+        request.toGetUrl());
+    return _http_post(request);
   }
 
-  void _head(Request request){
-    http.head(request.toGeturl());
+  dynamic _head(MethodMirror method, List<dynamic> data) {
+    var request = new HeadRequestBuilder(method, data).buildRequest();
+    print('HEAD    =>    <' +
+        MirrorSystem.getName(method.qualifiedName) +
+        '>    REQUEST    =>    ' +
+        request.toGetUrl());
+
+    return _http_head(request);
   }
 
-  static dynamic _read(Request request) {
-    return http.get(request.toGeturl());
+  dynamic _put(MethodMirror method, List<dynamic> data) {
+    var request = new PutRequestBuilder(method, data).buildRequest();
+    print('PUT    =>    <' +
+        MirrorSystem.getName(method.qualifiedName) +
+        '>    REQUEST    =>    ' +
+        request.toGetUrl());
+
+    return _http_put(request);
   }
 
-  static dynamic _read_post(Request request) {
-    return http.post(request.url, body: request.params);
+  dynamic _delete(MethodMirror method, List<dynamic> data) {
+    var request = new DeleteRequestBuilder(method, data).buildRequest();
+    print('DELETE    =>    <' +
+        MirrorSystem.getName(method.qualifiedName) +
+        '>    REQUEST    =>    ' +
+        request.toGetUrl());
+
+    return _http_delete(request);
+  }
+
+  dynamic _options(MethodMirror method, List<dynamic> data) {
+    var request = new DeleteRequestBuilder(method, data).buildRequest();
+    print('OPTIONS    =>    <' +
+        MirrorSystem.getName(method.qualifiedName) +
+        '>    REQUEST    =>    ' +
+        request.toGetUrl());
+
+    return _http_delete(request);
+  }
+
+  static dynamic _http_head(Request request) {
+    if (request != null) {
+      return http.head(request.toGetUrl());
+    } else {
+      return null;
+    }
+  }
+
+  static dynamic _http_get(Request request) {
+    if (request != null) {
+      return http.get(request.toGetUrl());
+    } else {
+      return null;
+    }
+  }
+
+  static dynamic _http_post(Request request) {
+    if (request != null) {
+      return http.post(request.toGetUrl(), body: request.params);
+    } else {
+      return null;
+    }
+  }
+
+  static dynamic _http_put(Request request) {
+    if (request != null) {
+      return http.put(request.toGetUrl(), body: request.params);
+    } else {
+      return null;
+    }
+  }
+
+  static dynamic _http_delete(Request request) {
+    if (request != null) {
+      return http.delete(request.toGetUrl());
+    } else {
+      return null;
+    }
   }
 }
 
@@ -122,7 +213,7 @@ class GetRequstBuilder extends RequestBuilder {
             request.params.putIfAbsent(
                 methodMirror.parameters[i].metadata[0].reflectee.value,
                 () => this.data[i]);
-          } 
+          }
           // else {
           //   request.params.putIfAbsent(
           //       MirrorSystem.getName(methodMirror.parameters[i].simpleName),
@@ -153,11 +244,11 @@ class PostRequstBuilder extends RequestBuilder {
       var request = new Request(url);
       for (int i = 0; i < methodMirror.parameters.length; i++) {
         if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
-          if (methodMirror.parameters[i].metadata[0].reflectee.path != null) {
+          if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
             request.params.putIfAbsent(
-                methodMirror.parameters[i].metadata[0].reflectee.path,
-                () => this.data[i]);
-          } 
+                methodMirror.parameters[i].metadata[0].reflectee.value,
+                () => this.data[i].toString());
+          }
           // else {
           //   request.params.putIfAbsent(
           //       MirrorSystem.getName(methodMirror.parameters[i].simpleName),
@@ -166,6 +257,76 @@ class PostRequstBuilder extends RequestBuilder {
         }
       }
       return request;
+    }
+    return null;
+  }
+}
+
+class HeadRequestBuilder extends RequestBuilder {
+  HeadRequestBuilder(MethodMirror methodMirror, List data)
+      : super(methodMirror, data);
+
+  Request buildRequest() {
+    String url = '';
+    if (methodMirror != null) {
+      for (var metadata in methodMirror.metadata) {
+        if (metadata.reflectee is HEAD) {
+          url += metadata.reflectee.path;
+          break;
+        }
+      }
+
+      return new Request(url);
+    }
+    return null;
+  }
+}
+
+class PutRequestBuilder extends RequestBuilder {
+  PutRequestBuilder(MethodMirror methodMirror, List data)
+      : super(methodMirror, data);
+
+  Request buildRequest() {
+    String url = '';
+    if (methodMirror != null) {
+      for (var metadata in methodMirror.metadata) {
+        if (metadata.reflectee is PUT) {
+          url += metadata.reflectee.path;
+          break;
+        }
+      }
+
+      var request = new Request(url);
+      for (int i = 0; i < methodMirror.parameters.length; i++) {
+        if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
+          if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
+            request.params.putIfAbsent(
+                methodMirror.parameters[i].metadata[0].reflectee.value,
+                () => this.data[i].toString());
+          }
+        }
+      }
+      return request;
+    }
+    return null;
+  }
+}
+
+class DeleteRequestBuilder extends RequestBuilder {
+  DeleteRequestBuilder(MethodMirror methodMirror, List data)
+      : super(methodMirror, data);
+
+  Request buildRequest() {
+    String url = '';
+    if (methodMirror != null) {
+      for (var metadata in methodMirror.metadata) {
+        if (metadata.reflectee is DELETE) {
+          url += metadata.reflectee.path;
+          break;
+        }
+      }
+
+      return new Request(url);
     }
     return null;
   }
@@ -189,7 +350,7 @@ class Request {
 
   Request(this.url, {this.headers});
 
-  String toGeturl() {
+  String toGetUrl() {
     String getUrl = url;
     getUrl += '?';
     params.forEach((String key, dynamic value) {
@@ -198,7 +359,7 @@ class Request {
     return getUrl;
   }
 
-  String toUrl(){
+  String toUrl() {
     return url;
   }
 }

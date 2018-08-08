@@ -1,6 +1,8 @@
 const String HOST = 'https://jiasule.v2ex.com/';
 const String API_PATH = 'api/';
 
+const String LOCAL_HOST = 'http://localhost:8080';
+
 const String API_HOST = HOST + API_PATH;
 
 /// 取网站信息
