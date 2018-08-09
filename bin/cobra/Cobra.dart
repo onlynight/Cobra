@@ -1,15 +1,30 @@
 import 'dart:mirrors';
-import 'Annotations.dart';
+
+import 'package:http/http.dart';
 import 'package:http/http.dart' as http;
+
+import 'Annotations.dart';
+import 'Intercepters.dart';
+import 'Requests.dart';
+import 'Responses.dart';
+
 export 'Annotations.dart';
+export 'Intercepters.dart';
+export 'Requests.dart';
+export 'Responses.dart';
 
 class Cobra {
   String _url;
+  List<Intercepter> _intercepters = new List();
   Map<Type, Map<Symbol, MethodMirror>> _cache = {};
 
   void set baseUrl(String url) => _url = url;
 
   String get baseUrl => _url;
+
+  void addIntercepter(Intercepter intercepter) {
+    _intercepters.add(intercepter);
+  }
 
   dynamic obtainService(Type type) {
     var exist = _cache.containsKey(type);
@@ -91,272 +106,129 @@ class Cobra {
     return method;
   }
 
-  dynamic _get(MethodMirror method, List<dynamic> data) {
-    var request = new GetRequstBuilder(baseUrl, method, data).buildRequest();
-    print('GET     =>    <' +
-        MirrorSystem.getName(method.qualifiedName) +
-        '>    REQUEST    =>    ' +
-        request.toGetUrl());
-    return _http_get(request);
+  dynamic _get(MethodMirror method, List<dynamic> data) async {
+    return await _http_get(
+        method, new GetRequstBuilder(baseUrl, method, data).buildRequest());
   }
 
-  dynamic _post(MethodMirror method, List<dynamic> data) {
-    var request = new PostRequstBuilder(baseUrl, method, data).buildRequest();
-    print('POST    =>    <' +
-        MirrorSystem.getName(method.qualifiedName) +
-        '>    REQUEST    =>    ' +
-        request.toGetUrl());
-    return _http_post(request);
+  dynamic _post(MethodMirror method, List<dynamic> data) async {
+    return _http_post(
+        method, new PostRequstBuilder(baseUrl, method, data).buildRequest());
   }
 
   dynamic _head(MethodMirror method, List<dynamic> data) {
-    var request = new HeadRequestBuilder(baseUrl, method, data).buildRequest();
-    print('HEAD    =>    <' +
-        MirrorSystem.getName(method.qualifiedName) +
-        '>    REQUEST    =>    ' +
-        request.toGetUrl());
-
-    return _http_head(request);
+    return _http_head(
+        method, new HeadRequestBuilder(baseUrl, method, data).buildRequest());
   }
 
   dynamic _put(MethodMirror method, List<dynamic> data) {
-    var request = new PutRequestBuilder(baseUrl, method, data).buildRequest();
-    print('PUT    =>    <' +
-        MirrorSystem.getName(method.qualifiedName) +
-        '>    REQUEST    =>    ' +
-        request.toGetUrl());
-
-    return _http_put(request);
+    return _http_put(
+        method, new PutRequestBuilder(baseUrl, method, data).buildRequest());
   }
 
   dynamic _delete(MethodMirror method, List<dynamic> data) {
-    var request =
-        new DeleteRequestBuilder(baseUrl, method, data).buildRequest();
-    print('DELETE    =>    <' +
+    return _http_delete(
+        method, new DeleteRequestBuilder(baseUrl, method, data).buildRequest());
+  }
+
+  dynamic _http_head(MethodMirror method, CobraRequest request) async {
+    if (request != null) {
+      _performBeforeRequest(request);
+      _printRequestLog(method, 'HEAD', request);
+      Response response =
+          await http.head(request.toGetUrl(), headers: request.headers);
+      _performAfterResponse(
+          request,
+          new CobraResponse(
+              response.statusCode, response.body, response.headers));
+      return response;
+    } else {
+      return null;
+    }
+  }
+
+  dynamic _http_get(MethodMirror method, CobraRequest request) async {
+    if (request != null) {
+      _performBeforeRequest(request);
+      _printRequestLog(method, 'GET', request);
+      Response response =
+          await http.get(request.toGetUrl(), headers: request.headers);
+      _performAfterResponse(
+          request,
+          new CobraResponse(
+              response.statusCode, response.body, response.headers));
+      return response;
+    } else {
+      return null;
+    }
+  }
+
+  dynamic _http_post(MethodMirror method, CobraRequest request) async {
+    if (request != null) {
+      _performBeforeRequest(request);
+      _printRequestLog(method, 'POST', request);
+      Response response = await http.post(request.toGetUrl(),
+          body: request.params, headers: request.headers);
+      _performAfterResponse(
+          request,
+          new CobraResponse(
+              response.statusCode, response.body, response.headers));
+      return response;
+    } else {
+      return null;
+    }
+  }
+
+  dynamic _http_put(MethodMirror method, CobraRequest request) async {
+    if (request != null) {
+      _performBeforeRequest(request);
+      _printRequestLog(method, 'PUT', request);
+      Response response = await http.put(request.toGetUrl(),
+          body: request.params, headers: request.headers);
+      _performAfterResponse(
+          request,
+          new CobraResponse(
+              response.statusCode, response.body, response.headers));
+      return response;
+    } else {
+      return null;
+    }
+  }
+
+  dynamic _http_delete(MethodMirror method, CobraRequest request) async {
+    if (request != null) {
+      _performBeforeRequest(request);
+      _printRequestLog(method, 'DELETE', request);
+      Response response =
+          await http.delete(request.toGetUrl(), headers: request.headers);
+      _performAfterResponse(
+          request,
+          new CobraResponse(
+              response.statusCode, response.body, response.headers));
+      return response;
+    } else {
+      return null;
+    }
+  }
+
+  void _printRequestLog(
+      MethodMirror method, String httpMethod, CobraRequest request) {
+    print(httpMethod +
+        '    =>    <' +
         MirrorSystem.getName(method.qualifiedName) +
         '>    REQUEST    =>    ' +
         request.toGetUrl());
-
-    return _http_delete(request);
   }
 
-  static dynamic _http_head(Request request) {
-    if (request != null) {
-      return http.head(request.toGetUrl());
-    } else {
-      return null;
-    }
-  }
-
-  static dynamic _http_get(Request request) {
-    if (request != null) {
-      return http.get(request.toGetUrl());
-    } else {
-      return null;
-    }
-  }
-
-  static dynamic _http_post(Request request) {
-    if (request != null) {
-      return http.post(request.toGetUrl(), body: request.params);
-    } else {
-      return null;
-    }
-  }
-
-  static dynamic _http_put(Request request) {
-    if (request != null) {
-      return http.put(request.toGetUrl(), body: request.params);
-    } else {
-      return null;
-    }
-  }
-
-  static dynamic _http_delete(Request request) {
-    if (request != null) {
-      return http.delete(request.toGetUrl());
-    } else {
-      return null;
-    }
-  }
-}
-
-class GetRequstBuilder extends RequestBuilder {
-  GetRequstBuilder(String baseUrl, MethodMirror methodMirror, List data)
-      : super(baseUrl, methodMirror, data);
-
-  Request buildRequest() {
-    String url = '';
-    if (methodMirror != null) {
-      for (var metadata in methodMirror.metadata) {
-        if (metadata.reflectee is GET) {
-          url += metadata.reflectee.path;
-          break;
-        }
-      }
-
-      var request = new Request(url, baseUrl);
-      for (int i = 0; i < methodMirror.parameters.length; i++) {
-        if (methodMirror.parameters[i].metadata[0].reflectee is Query) {
-          if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
-            request.params.putIfAbsent(
-                methodMirror.parameters[i].metadata[0].reflectee.value,
-                () => this.data[i]);
-          }
-          // else {
-          //   request.params.putIfAbsent(
-          //       MirrorSystem.getName(methodMirror.parameters[i].simpleName),
-          //       () => this.data[i]);
-          // }
-        }
-      }
-      return request;
-    }
-    return null;
-  }
-}
-
-class PostRequstBuilder extends RequestBuilder {
-  PostRequstBuilder(String baseUrl, MethodMirror methodMirror, List data)
-      : super(baseUrl, methodMirror, data);
-
-  Request buildRequest() {
-    String url = '';
-    if (methodMirror != null) {
-      for (var metadata in methodMirror.metadata) {
-        if (metadata.reflectee is POST) {
-          url += metadata.reflectee.path;
-          break;
-        }
-      }
-
-      var request = new Request(url, baseUrl);
-      for (int i = 0; i < methodMirror.parameters.length; i++) {
-        if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
-          if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
-            request.params.putIfAbsent(
-                methodMirror.parameters[i].metadata[0].reflectee.value,
-                () => this.data[i].toString());
-          }
-          // else {
-          //   request.params.putIfAbsent(
-          //       MirrorSystem.getName(methodMirror.parameters[i].simpleName),
-          //       () => this.data[i]);
-          // }
-        }
-      }
-      return request;
-    }
-    return null;
-  }
-}
-
-class HeadRequestBuilder extends RequestBuilder {
-  HeadRequestBuilder(String baseUrl, MethodMirror methodMirror, List data)
-      : super(baseUrl, methodMirror, data);
-
-  Request buildRequest() {
-    String url = '';
-    if (methodMirror != null) {
-      for (var metadata in methodMirror.metadata) {
-        if (metadata.reflectee is HEAD) {
-          url += metadata.reflectee.path;
-          break;
-        }
-      }
-
-      return new Request(url, baseUrl);
-    }
-    return null;
-  }
-}
-
-class PutRequestBuilder extends RequestBuilder {
-  PutRequestBuilder(String baseUrl, MethodMirror methodMirror, List data)
-      : super(baseUrl, methodMirror, data);
-
-  Request buildRequest() {
-    String url = '';
-    if (methodMirror != null) {
-      for (var metadata in methodMirror.metadata) {
-        if (metadata.reflectee is PUT) {
-          url += metadata.reflectee.path;
-          break;
-        }
-      }
-
-      var request = new Request(url, baseUrl);
-      for (int i = 0; i < methodMirror.parameters.length; i++) {
-        if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
-          if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
-            request.params.putIfAbsent(
-                methodMirror.parameters[i].metadata[0].reflectee.value,
-                () => this.data[i].toString());
-          }
-        }
-      }
-      return request;
-    }
-    return null;
-  }
-}
-
-class DeleteRequestBuilder extends RequestBuilder {
-  DeleteRequestBuilder(String baseUrl, MethodMirror methodMirror, List data)
-      : super(baseUrl, methodMirror, data);
-
-  Request buildRequest() {
-    String url = '';
-    if (methodMirror != null) {
-      for (var metadata in methodMirror.metadata) {
-        if (metadata.reflectee is DELETE) {
-          url += metadata.reflectee.path;
-          break;
-        }
-      }
-
-      return new Request(url, baseUrl);
-    }
-    return null;
-  }
-}
-
-class RequestBuilder {
-  String baseUrl;
-  MethodMirror methodMirror;
-  List<dynamic> data;
-
-  RequestBuilder(this.baseUrl, this.methodMirror, this.data);
-
-  Request buildRequest() {
-    return null;
-  }
-}
-
-class Request {
-  String url;
-  String baseUrl;
-  Map<String, String> params = {};
-  Map<String, String> headers = {};
-
-  Request(this.url, this.baseUrl, {this.headers}) {
-    if (url != null) {
-      if (!url.startsWith('http')) {
-        url = baseUrl + url;
-      }
-    }
-  }
-
-  String toGetUrl() {
-    String getUrl = url;
-    getUrl += '?';
-    params.forEach((String key, dynamic value) {
-      getUrl += key + '=' + value.toString() + '&';
+  void _performBeforeRequest(CobraRequest request) {
+    _intercepters.forEach((Intercepter intercepter) {
+      intercepter.beforeRequest(request);
     });
-    return getUrl;
   }
 
-  String toUrl() {
-    return url;
+  void _performAfterResponse(CobraRequest request, CobraResponse response) {
+    _intercepters.forEach((Intercepter intercepter) {
+      intercepter.afterResponse(request, response);
+    });
   }
 }
