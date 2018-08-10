@@ -8,15 +8,9 @@ class GetRequstBuilder extends RequestBuilder {
 
   CobraRequest buildRequest() {
     String url = _buildUrl();
+    var headers = _buildHeaders();
     if (methodMirror != null) {
-      // for (var metadata in methodMirror.metadata) {
-      //   if (metadata.reflectee is GET) {
-      //     url += metadata.reflectee.path;
-      //     break;
-      //   }
-      // }
-
-      var request = new CobraRequest(url, baseUrl);
+      var request = new CobraRequest(url, baseUrl, headers: headers);
       for (int i = 0; i < methodMirror.parameters.length; i++) {
         if (methodMirror.parameters[i].metadata[0].reflectee is Query) {
           if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
@@ -45,15 +39,9 @@ class PostRequstBuilder extends RequestBuilder {
 
   CobraRequest buildRequest() {
     String url = _buildUrl();
+    var headers = _buildHeaders();
     if (methodMirror != null) {
-      // for (var metadata in methodMirror.metadata) {
-      //   if (metadata.reflectee is POST) {
-      //     url += metadata.reflectee.path;
-      //     break;
-      //   }
-      // }
-
-      var request = new CobraRequest(url, baseUrl);
+      var request = new CobraRequest(url, baseUrl, headers: headers);
       for (int i = 0; i < methodMirror.parameters.length; i++) {
         if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
           if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
@@ -61,11 +49,9 @@ class PostRequstBuilder extends RequestBuilder {
                 methodMirror.parameters[i].metadata[0].reflectee.value,
                 () => this.data[i].toString());
           }
-          // else {
-          //   request.params.putIfAbsent(
-          //       MirrorSystem.getName(methodMirror.parameters[i].simpleName),
-          //       () => this.data[i]);
-          // }
+        } else if (methodMirror.parameters[i].metadata[0].reflectee is Body) {
+          request = new CobraRequest(url, baseUrl,
+              params: this.data[i], headers: headers);
         }
       }
       return request;
@@ -80,15 +66,9 @@ class HeadRequestBuilder extends RequestBuilder {
 
   CobraRequest buildRequest() {
     String url = _buildUrl();
+    var headers = _buildHeaders();
     if (methodMirror != null) {
-      // for (var metadata in methodMirror.metadata) {
-      //   if (metadata.reflectee is HEAD) {
-      //     url += metadata.reflectee.path;
-      //     break;
-      //   }
-      // }
-
-      return new CobraRequest(url, baseUrl);
+      return new CobraRequest(url, baseUrl, headers: headers);
     }
     return null;
   }
@@ -100,15 +80,9 @@ class PutRequestBuilder extends RequestBuilder {
 
   CobraRequest buildRequest() {
     String url = _buildUrl();
+    var headers = _buildHeaders();
     if (methodMirror != null) {
-      // for (var metadata in methodMirror.metadata) {
-      //   if (metadata.reflectee is PUT) {
-      //     url += metadata.reflectee.path;
-      //     break;
-      //   }
-      // }
-
-      var request = new CobraRequest(url, baseUrl);
+      var request = new CobraRequest(url, baseUrl, headers: headers);
       for (int i = 0; i < methodMirror.parameters.length; i++) {
         if (methodMirror.parameters[i].metadata[0].reflectee is Field) {
           if (methodMirror.parameters[i].metadata[0].reflectee.value != null) {
@@ -130,15 +104,9 @@ class DeleteRequestBuilder extends RequestBuilder {
 
   CobraRequest buildRequest() {
     String url = _buildUrl();
+    var headers = _buildHeaders();
     if (methodMirror != null) {
-      // for (var metadata in methodMirror.metadata) {
-      //   if (metadata.reflectee is DELETE) {
-      //     url += metadata.reflectee.path;
-      //     break;
-      //   }
-      // }
-
-      return new CobraRequest(url, baseUrl);
+      return new CobraRequest(url, baseUrl, headers: headers);
     }
     return null;
   }
@@ -163,14 +131,20 @@ class RequestBuilder {
         if (path.contains('{') && path.contains('}')) {
           List<String> paths = path.split('/');
           for (int i = 0; i < paths.length; i++) {
+            if (paths[i].compareTo('') == 0) {
+              paths.removeAt(i);
+            }
+          }
+          for (int i = 0; i < paths.length; i++) {
             String temp = paths[i];
             if (temp.contains('{') && temp.contains('}')) {
               String key = temp.replaceAll('{', '').replaceAll('}', '');
               for (int j = 0; j < methodMirror.parameters.length; j++) {
                 ParameterMirror param = methodMirror.parameters[j];
-                if (key.compareTo(param.metadata[0].reflectee.value) == 0) {
-                  paths.replaceRange(
-                      j, j, new List<String>()..add(this.data[j]));
+                if (param.metadata[0].reflectee is Path &&
+                    key.compareTo(param.metadata[0].reflectee.value) == 0) {
+                  paths.removeAt(i);
+                  paths.insert(i, this.data[j]);
                 }
               }
             }
@@ -185,15 +159,35 @@ class RequestBuilder {
           });
           url += '/';
           return url;
+        } else {
+          return methodMirror.metadata[0].reflectee.path;
         }
       } else {
-        print(methodMirror.metadata[0].reflectee.path);
         return methodMirror.metadata[0].reflectee.path;
       }
     } catch (e) {
       print(e);
     }
     return '';
+  }
+
+  Map<String, String> _buildHeaders() {
+    Map<String, String> headers = new Map();
+    methodMirror.metadata.forEach((metadata) {
+      if (metadata.reflectee is Headers) {
+        if (metadata.reflectee.value != null) {
+          try {
+            Map<String, String> mapper = metadata.reflectee.value;
+            mapper.forEach((String key, String value) {
+              headers.putIfAbsent(key, () => value);
+            });
+          } catch (e) {
+            print(e);
+          }
+        }
+      }
+    });
+    return headers;
   }
 }
 
@@ -203,7 +197,7 @@ class CobraRequest {
   Map<String, String> params = {};
   Map<String, String> headers = {};
 
-  CobraRequest(this.url, this.baseUrl, {this.headers}) {
+  CobraRequest(this.url, this.baseUrl, {this.headers, this.params}) {
     if (url != null) {
       if (!url.startsWith('http')) {
         url = baseUrl + url;
@@ -220,9 +214,13 @@ class CobraRequest {
   String toGetUrl() {
     String getUrl = url;
     getUrl += '?';
-    params.forEach((String key, dynamic value) {
-      getUrl += key + '=' + value.toString() + '&';
-    });
+    if (params is Map) {
+      params.forEach((String key, dynamic value) {
+        getUrl += key + '=' + value.toString() + '&';
+      });
+    } else if (params is String) {
+      getUrl += params.toString();
+    }
     return getUrl;
   }
 

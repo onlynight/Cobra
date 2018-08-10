@@ -39,11 +39,33 @@ abstract class TestService {
   @GET('/query_map.json')
   Future<Response> queryMapLocalhost(@QueryMap() Map<String, String> params);
 
-  @GET('/{some_path}/get.json')
-  Future<Response> getPathLocalhost(@Path('some_path') String path);
+  @GET('/{some_path}/{some_path2}/get.json/')
+  Future<Response> getPathLocalhost(@Path('some_path') String path,
+      @Query('id') int id, @Path('some_path2') String path2);
+
+  @GET('/headers.json')
+  @Headers(const {'deviece_id': '1234sabgas3242asdfabqwer'})
+  Future<Response> getWithHeadersLocalhost();
+
+  @POST('/json.json')
+  @Headers(const {'Content-type': 'application/json'})
+  Future<Response> postJsonContentLocalhost(@Body() String body);
+
+}
+
+void testJsonBody() {
+  String url = "http://localhost:8080";
+  post(url,
+          headers: {'Content-type': 'application/json'},
+          body:
+              '{"distinct": "users","key": "account","query": {"active":true}}')
+      .then((response) {
+    print(response.body);
+  });
 }
 
 main(List<String> args) {
+  // testJsonBody();
   var cobra = new Cobra()
     ..baseUrl = constants.LOCAL_HOST
     ..addIntercepter(new HttpRequestIntercepter());
@@ -71,8 +93,14 @@ main(List<String> args) {
   params.putIfAbsent('key3', () => 'value3');
   response = service.queryMapLocalhost(params);
   printResponse(response);
-  
-  response = service.getPathLocalhost('get');
+
+  response = service.getPathLocalhost('get', 1, 'post');
+  printResponse(response);
+
+  response = service.getWithHeadersLocalhost();
+  printResponse(response);
+
+  response = service.postJsonContentLocalhost('{\"id\":123}');
   printResponse(response);
 }
 
@@ -96,7 +124,9 @@ class HttpRequestIntercepter extends Intercepter {
 
   @override
   void beforeRequest(CobraRequest request) {
-    request.params.putIfAbsent('add_param_in_intercepter', () => 'value');
+    if (request.params is Map) {
+      request.params.putIfAbsent('add_param_in_intercepter', () => 'value');
+    }
     request.headers
         .putIfAbsent('token', () => 'tokenasdfaskjdkqwerjajsdfasafds21432');
   }

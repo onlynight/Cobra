@@ -82,9 +82,7 @@ class QueryMap {
 }
 
 class Body {
-  final String value;
-
-  const Body(this.value);
+  const Body();
 }
 
 /**
@@ -101,38 +99,14 @@ class Field {
 }
 
 /**
- * Set http request param as form-urlencoded.
- */
-class FormUrlEncoded {
-  const FormUrlEncoded();
-}
-
-/**
- * Set http request param as form data.
- */
-class FormData {
-  const FormData();
-}
-
-/**
- * Set http request param as raw data.
- */
-class RawData {
-  const RawData();
-}
-
-/**
  * Set the http request headers.
  */
 class Headers {
-  final String value;
+  /**
+   * headers
+   * list
+   */
+  final Map<String, String> value;
 
   const Headers(this.value);
-}
-
-/**
- * Set the header with map, Map<String,String> only this way.
- */
-class HeaderMap {
-  const HeaderMap();
 }
