@@ -64,8 +64,13 @@ abstract class TestService {
 Then use ```Cobra``` to create a proxy class, and call the API method:
 
 ```dart
-TestService service = Cobra.obtainService(TestService);
-var response = service.getSiteInfo();
+var cobra = new Cobra()
+    ..baseUrl = constants.LOCAL_HOST
+    ..addIntercepter(new HttpRequestIntercepter());
+
+TestService service = cobra.obtainService(TestService);
+
+Future<Response> response = service.getLocalhost();
 response.then((res){
     print(res);
 });
