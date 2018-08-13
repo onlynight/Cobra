@@ -1,6 +1,8 @@
 Cobra
 =====
 
+### FLUTTER DOSEN'T SUPPORT REFLECTION, IT DOESN'T SUPPORT FLUTTER, SHIT!!!
+
 If you are an android developer, you must know [Retrofit][1]. This project aim to create the same functionality tools for flutter. Now it's in develop, let's develop it together.
 
 ## TEST
